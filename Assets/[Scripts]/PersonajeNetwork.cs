@@ -1,4 +1,5 @@
 using System;
+using FishNet.Example.ColliderRollbacks;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
 using UnityEngine;
@@ -11,16 +12,27 @@ public class PersonajeNetwork : NetworkBehaviour
     [SerializeField]
     float _moveSpeed = 3f;
     readonly SyncVar<Color> _myColor = new SyncVar<Color>();
+    private readonly SyncVar<GameObject> target = new SyncVar<GameObject>();
     
-    // SyncVar<Dato/Valor>
-    // C# 2 tipoa de variables de dato/valor y de referencia
-    // Dato/valor: int, float, bool, string, char, STRUCT
-    // referencia: Son las que hacen referencia a las clases. 
+    // Se puede sincronizar GameObject solo SI tiene el NetworkObject
     
     private void Awake()
     {
         // La funcion OnChange requiere (T valorAnterior, T valorNuevo, bool asServer)
         _myColor.OnChange += myColorChange;
+    }
+
+    void EnviarTeletransporte()
+    {
+        //Gameobject go;
+        //NetworkObject networkObject = go.GetComponent<NetworkObject>();
+        //Teletransportar(networkObject.ObjectId);
+    }
+
+    [ObserversRpc]
+    void Teletransportar(GameObject target)
+    {
+        transform.position = target.transform.position;
     }
     
     [ServerRpc] // Una función que se ejecuta en el servidor
@@ -46,6 +58,30 @@ public class PersonajeNetwork : NetworkBehaviour
         }
     }
 
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Capsula"))
+        {
+            
+        }
+    }
+
+    // Puedo llamar esta funcion en gameObjects que no me pertenecen
+    [ServerRpc (RequireOwnership = false)]
+    void CambiarColorServerRPC2()
+    {
+        Color nuevoColor = Random.ColorHSV();
+        CambiarColorRPC2(nuevoColor);
+    }
+    
+    //[TargetRpc] Que permite mandar mensajes "paquetes" hacia un solo usuario/jugador en especifico.
+    // RunLocally => Permite que el servidor ejecute el mismo codigo que el cliente SIN ser cliente
+    [ObserversRpc (RunLocally = true)] // Observer es un cliente, solo se ejecuta en clientes
+    void CambiarColorRPC2(Color nuevoColor)
+    {
+        GetComponent<MeshRenderer>().material.color = nuevoColor;
+    }
+
     void myColorChange(Color before, Color next, bool asServer) // next == myColor.Value
     {
         GetComponent<MeshRenderer>().material.color = next;
@@ -67,7 +103,26 @@ public class PersonajeNetwork : NetworkBehaviour
             //  Debido al tiempo que tarda el paquete en enviarse y recibirse, la ejecucion del codigo es mas rapida por 
             //  lo que el valor de la variable no se ha actualizado. y no se va imprmir el valor apropiadamente*/
         }
+
+        if (Input.GetKeyDown(KeyCode.V))
+        {
+            CambiarColorServerRPC2();
+        }
         moveInput = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
         transform.Translate(moveInput * (Time.deltaTime * _moveSpeed));
     }
+    
+    // SyncVar<Dato/Valor>
+    // C# 2 tipoa de variables de dato/valor y de referencia
+    // Dato/valor: int, float, bool, string, char, STRUCT, Vector3, Vector2, Quaterniones
+    // referencia: class, son las que hacen referencia a las clases.
+
+    struct MyStruct
+    {
+        public float a; // Si se sincroniza
+        public Vector3 pos; // Si se sincroniza
+        public Transform t; // No se sincroniza
+    }
+    
+    
 }
