@@ -1,4 +1,5 @@
 using System;
+using FishNet.Connection;
 using FishNet.Example.ColliderRollbacks;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
@@ -60,10 +61,28 @@ public class PersonajeNetwork : NetworkBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Capsula"))
+        if (IsServerStarted == false) // No soy el servidor, me salgo y no hago nada.
         {
-            
+            //Reproducir Sonido
+            //Dar feedback al usuario directamente
+            return;
         }
+        /*if(IsClientStarted) // Hay que tener cuidado con este si estamos usando un HOST.
+        Servidor y cliente al mismo tiempo.*/
+        if (other.CompareTag("Cube"))
+        {
+            Despawn(other.gameObject); // Destroy (aunque seria mas bien un SetActive = false) porque lo esconde,
+            // pero se sincroniza en red.
+            //Owner // <--- owner es un NetworkConnection
+            EquiparArmaRPC(connection:Owner); // Le mando mensaje solo al jugador que controla este gameObject
+            // Si Owner es == null, // Lo controla el servidor
+        }
+    }
+    
+    [TargetRpc]
+    void EquiparArmaRPC(NetworkConnection connection)
+    {
+        print("Si tome el arma");
     }
 
     // Puedo llamar esta funcion en gameObjects que no me pertenecen
