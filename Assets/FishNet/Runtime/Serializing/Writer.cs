@@ -10,6 +10,7 @@ using GameKit.Dependencies.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using GameKit.Dependencies.Utilities.Types;
 using UnityEngine;
 
 [assembly: InternalsVisibleTo(UtilityConstants.GENERATED_ASSEMBLY_NAME)]
@@ -168,7 +169,7 @@ namespace FishNet.Serializing
         /// <returns></returns>
         public ArraySegment<byte> GetArraySegment()
         {
-            return new ArraySegment<byte>(_buffer, 0, Length);
+            return new(_buffer, 0, Length);
         }
 
         /// <summary>
@@ -501,7 +502,7 @@ namespace FishNet.Serializing
         public void WriteSingleUnpacked(float value)
         {
             EnsureBufferLength(4);
-            UIntFloat converter = new UIntFloat { FloatValue = value };
+            UIntFloat converter = new() { FloatValue = value };
             WriteUInt32Unpacked(converter.UIntValue);
         }
 
@@ -518,7 +519,7 @@ namespace FishNet.Serializing
         /// <param name="value"></param>
         public void WriteDoubleUnpacked(double value)
         {
-            UIntDouble converter = new UIntDouble { DoubleValue = value };
+            UIntDouble converter = new() { DoubleValue = value };
             WriteUInt64Unpacked(converter.LongValue);
         }
 
@@ -535,7 +536,7 @@ namespace FishNet.Serializing
         /// <param name="value"></param>
         public void WriteDecimalUnpacked(decimal value)
         {
-            UIntDecimal converter = new UIntDecimal { DecimalValue = value };
+            UIntDecimal converter = new() { DecimalValue = value };
             WriteUInt64Unpacked(converter.LongValue1);
             WriteUInt64Unpacked(converter.LongValue2);
         }
@@ -1261,9 +1262,8 @@ namespace FishNet.Serializing
         /// <summary>
         /// Writes a replication to the server.
         /// </summary>
-        internal void WriteReplicate<T>(List<T> values, int offset) where T : IReplicateData
+        internal void WriteReplicate<T>(RingBuffer<T> values, int offset) where T : IReplicateData
         {
-            int startLength = Length;
             /* COUNT
              *
              * Each Entry:

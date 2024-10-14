@@ -115,7 +115,7 @@ namespace FishNet.Managing.Timing
         /// <summary>
         /// Tick on the last received packet, be it from server or client.
         /// </summary>
-        public EstimatedTick LastPacketTick { get; internal set; } = new EstimatedTick();
+        public EstimatedTick LastPacketTick { get; internal set; } = new();
 
         /// <summary>
         /// Current approximate network tick as it is on server.
@@ -239,7 +239,7 @@ namespace FishNet.Managing.Timing
         /// <summary>
         /// Stopwatch used for pings.
         /// </summary>
-        private SystemStopwatch _pingStopwatch = new SystemStopwatch();
+        private SystemStopwatch _pingStopwatch = new();
         /// <summary>
         /// Ticks passed since last ping.
         /// </summary>
@@ -247,7 +247,7 @@ namespace FishNet.Managing.Timing
         /// <summary>
         /// MovingAverage instance used to calculate mean ping.
         /// </summary>
-        private MovingAverage _pingAverage = new MovingAverage(5);
+        private MovingAverage _pingAverage = new(5);
         /// <summary>
         /// Accumulating frame time to determine when to increase tick.
         /// </summary>
@@ -794,7 +794,7 @@ namespace FishNet.Managing.Timing
             double delta = (NetworkManager.IsServerStarted) ? TickDelta : _adjustedTickDelta;
             double percent = (_elapsedTickTime / delta);
 
-            return new PreciseTick(tick, percent);
+            return new(tick, percent);
         }
 
         /// <summary>
@@ -976,7 +976,23 @@ namespace FishNet.Managing.Timing
             else
                 return (uint)Math.Ceiling(result);
         }
+        
+        /// <summary>
+        /// Converts time to a PreciseTick.
+        /// </summary>
+        /// <param name="time">Time to convert.</param>
+        /// <returns></returns>
+        public PreciseTick TimeToPreciseTick(double time)
+        {
+            double delta = TickDelta;
+            
+            uint ticks = (uint)Math.Floor(time / delta);
+            double percent = (time % delta);
 
+            return new PreciseTick(ticks, percent);
+        }
+
+        
         /// <summary>
         /// Estimatedly converts a synchronized tick to what it would be for the local tick.
         /// </summary>

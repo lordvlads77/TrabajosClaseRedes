@@ -47,6 +47,7 @@ namespace FishNet.Example.CustomSyncObject
                 Data = data;
             }
         }
+
         /// <summary>
         /// Types of changes. This is related to ChangedData
         /// where you can specify what has changed.
@@ -67,6 +68,7 @@ namespace FishNet.Example.CustomSyncObject
         /// <param name="oldItem"></param>
         /// <param name="newItem"></param>
         public delegate void CustomChanged(CustomOperation op, Structy oldItem, Structy newItem, bool asServer);
+
         /// <summary>
         /// Called when the Structy changes.
         /// </summary>
@@ -74,7 +76,7 @@ namespace FishNet.Example.CustomSyncObject
         /// <summary>
         /// Current value of Structy.
         /// </summary>
-        public Structy Value = new Structy();
+        public Structy Value = new();
         #endregion
 
         #region Private.
@@ -85,7 +87,7 @@ namespace FishNet.Example.CustomSyncObject
         /// <summary>
         /// Changed data which will be sent next tick.
         /// </summary>
-        private readonly List<ChangeData> _changed = new List<ChangeData>();
+        private readonly List<ChangeData> _changed = new();
         /// <summary>
         /// True if values have changed since initialization.
         /// </summary>
@@ -93,7 +95,7 @@ namespace FishNet.Example.CustomSyncObject
         /// <summary>
         /// Last value after dirty call.
         /// </summary>
-        private Structy _lastDirtied = new Structy();
+        private Structy _lastDirtied = new();
         #endregion
 
         protected override void Initialized()
@@ -121,17 +123,17 @@ namespace FishNet.Example.CustomSyncObject
             }
 
             /* Set as changed even if cannot dirty.
-            * Dirty is only set when there are observers,
-            * but even if there are not observers
-            * values must be marked as changed so when
-            * there are observers, new values are sent. */
+             * Dirty is only set when there are observers,
+             * but even if there are not observers
+             * values must be marked as changed so when
+             * there are observers, new values are sent. */
             _valuesChanged = true;
             base.Dirty();
 
             //Data can currently only be set from server, so this is always asServer.
             bool asServer = true;
             //Add to changed.
-            ChangeData cd = new ChangeData(operation, next);
+            ChangeData cd = new(operation, next);
             _changed.Add(cd);
             OnChange?.Invoke(operation, prev, next, asServer);
         }
@@ -190,11 +192,7 @@ namespace FishNet.Example.CustomSyncObject
         [APIExclude]
         internal protected override void Read(PooledReader reader, bool asServer)
         {
-            /* When !asServer don't make changes if server is running.
-            * This is because changes would have already been made on
-            * the server side and doing so again would result in duplicates
-            * and potentially overwrite data not yet sent. */
-            bool asClientAndHost = (!asServer && base.NetworkManager.IsServerStarted);
+            base.SetReadArguments(reader, asServer, out bool newChangeId, out bool _, out bool canModifyValues);
 
             int changes = reader.ReadInt32();
             for (int i = 0; i < changes; i++)
@@ -213,12 +211,12 @@ namespace FishNet.Example.CustomSyncObject
                 else if (operation == CustomOperation.Age)
                     next.Age = reader.ReadUInt16();
 
-                OnChange?.Invoke(operation, prev, next, asServer);
-
-                if (!asClientAndHost)
+                if (canModifyValues)
                     Value = next;
+                
+                if (newChangeId)
+                    OnChange?.Invoke(operation, prev, next, asServer);
             }
-
         }
 
         /// <summary>

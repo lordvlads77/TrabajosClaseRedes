@@ -140,8 +140,8 @@ namespace FishNet.Component.Transforming
         public class GoalData : IResettable
         {
             public uint ReceivedTick;
-            public RateData Rates = new RateData();
-            public TransformData Transforms = new TransformData();
+            public RateData Rates = new();
+            public TransformData Transforms = new();
 
             [Preserve]
             public GoalData() { }
@@ -186,7 +186,6 @@ namespace FishNet.Component.Transforming
 
             [Preserve]
             public RateData() { }
-
 
             public void Update(RateData rd)
             {
@@ -357,7 +356,7 @@ namespace FishNet.Component.Transforming
         /// </summary>
         [Tooltip("How much to compress each transform property.")]
         [SerializeField]
-        private TransformPackingData _packing = new TransformPackingData()
+        private TransformPackingData _packing = new()
         {
             Position = AutoPackType.Packed,
             Rotation = AutoPackType.Packed,
@@ -446,7 +445,7 @@ namespace FishNet.Component.Transforming
         /// </summary>
         [Tooltip("Axes to snap on position.")]
         [SerializeField]
-        private SnappedAxes _positionSnapping = new SnappedAxes();
+        private SnappedAxes _positionSnapping = new();
 
         /// <summary>
         /// Sets which Position axes to snap.
@@ -472,7 +471,7 @@ namespace FishNet.Component.Transforming
         /// </summary>
         [Tooltip("Axes to snap on rotation.")]
         [SerializeField]
-        private SnappedAxes _rotationSnapping = new SnappedAxes();
+        private SnappedAxes _rotationSnapping = new();
 
         /// <summary>
         /// Sets which Scale axes to snap.
@@ -498,7 +497,7 @@ namespace FishNet.Component.Transforming
         /// </summary>
         [Tooltip("Axes to snap on scale.")]
         [SerializeField]
-        private SnappedAxes _scaleSnapping = new SnappedAxes();
+        private SnappedAxes _scaleSnapping = new();
 
         /// <summary>
         /// Sets which Scale axes to snap.
@@ -623,12 +622,14 @@ namespace FishNet.Component.Transforming
 
         private void OnDestroy()
         {
-            ResetState(true);
+            base.ResetState(true);
+            ResetState_OnDestroy();
         }
 
         public override void OnStartNetwork()
         {
             _cachedTransform = transform;
+            base.TimeManager.OnUpdate += TimeManager_OnUpdate;
         }
 
         public override void OnStartServer()
@@ -666,7 +667,6 @@ namespace FishNet.Component.Transforming
             ConfigureComponents();
             InitializeFields(false);
             SetDefaultGoalData();
-            base.TimeManager.OnUpdate += TimeManager_OnUpdate;
         }
 
         public override void OnOwnershipServer(NetworkConnection prevOwner)
@@ -707,17 +707,14 @@ namespace FishNet.Component.Transforming
             TryClearGoalDatas_OwnershipChange(prevOwner, false);
         }
 
-        public override void OnStopClient()
-        {
-            if (base.TimeManager != null)
-                base.TimeManager.OnUpdate -= TimeManager_OnUpdate;
-        }
+        public override void OnStopClient() { }
 
         public override void OnStopNetwork()
         {
             ResetState();
+            if (base.TimeManager != null)
+                base.TimeManager.OnUpdate -= TimeManager_OnUpdate;
         }
-
 
         /// <summary>
         /// Tries to clear the GoalDatas queue during an ownership change.
@@ -763,11 +760,23 @@ namespace FishNet.Component.Transforming
              * an object is despawned to a pool then very quickly respawned
              * before the clientHost side has not processed the despawn yet.
              * Because of this check count rather than null. */
-
             if (asClientAndNotHost || asServer)
-                _lastSentTransformData = ResettableObjectCaches<TransformData>.Retrieve();
+            {
+                //Prefer to reset existing.
+                if (_lastSentTransformData != null)
+                    _lastSentTransformData.ResetState();
+                else
+                    _lastSentTransformData = ResettableObjectCaches<TransformData>.Retrieve();
+            }
+
+
             if (asServer)
-                _toClientChangedWriter = WriterPool.Retrieve();
+            {
+                if (_toClientChangedWriter != null)
+                    _toClientChangedWriter.ResetState();
+                else
+                    _toClientChangedWriter = WriterPool.Retrieve();
+            }
         }
 
         /// <summary>
@@ -1013,7 +1022,6 @@ namespace FishNet.Component.Transforming
         {
             SetIntervalInternal(value);
         }
-
 
         /// <summary>
         /// Creates goal data using current position.
@@ -1455,9 +1463,11 @@ namespace FishNet.Component.Transforming
         {
             if (_currentGoalData == null)
                 return;
+
             //Cannot move if neither is active.
             if (!base.IsServerInitialized && !base.IsClientInitialized)
                 return;
+
             //If client auth and the owner don't move towards target.
             if (_clientAuthoritative)
             {
@@ -1553,7 +1563,27 @@ namespace FishNet.Component.Transforming
                 //No more in buffer, see if can extrapolate.
                 else
                 {
-                    
+                    //PROSTART
+                    //Can extrapolate.
+                    if (td.ExtrapolationState == TransformData.ExtrapolateState.Available)
+                    {
+                        rd.TimeRemaining = (float)(_extrapolation * base.TimeManager.TickDelta);
+                        td.ExtrapolationState = TransformData.ExtrapolateState.Active;
+                        if (leftOver > 0f)
+                            MoveToTarget(leftOver);
+                    }
+                    //Ran out of extrapolate.
+                    else if (td.ExtrapolationState == TransformData.ExtrapolateState.Active)
+                    {
+                        rd.TimeRemaining = (float)(_extrapolation * base.TimeManager.TickDelta);
+                        td.ExtrapolationState = TransformData.ExtrapolateState.Disabled;
+                        if (leftOver > 0f)
+                            MoveToTarget(leftOver);
+                    }
+                    //Extrapolation has ended or was never enabled.
+                    else
+                    {
+                        //PROEND
                         /* If everything matches up then end queue.
                          * Otherwise let it play out until stuff
                          * aligns. Generally the time remaining is enough
@@ -1562,7 +1592,9 @@ namespace FishNet.Component.Transforming
                         if (!HasChanged(td))
                             _currentGoalData = null;
                         OnInterpolationComplete?.Invoke();
-                        
+                        //PROSTART
+                    }
+                    //PROEND
                 }
             }
         }
@@ -1615,7 +1647,6 @@ namespace FishNet.Component.Transforming
                         return;
 
                     _serverChangedSinceReliable = ChangedDelta.Unset;
-
                     writer = _toClientChangedWriter;
                     /* If here then current is unset but last was not.
                      * Send last as reliable so clients have the latest sent through. */
@@ -1634,7 +1665,6 @@ namespace FishNet.Component.Transforming
                     /* If here a send for transform values will occur. Update last values.
                      * Tick doesn't need to be set for whoever controls transform. */
                     lastSentData.Update(0, t.localPosition, t.localRotation, t.localScale, t.localPosition, ParentBehaviour);
-
                     SerializeChanged(changed, writer);
                 }
 
@@ -1691,9 +1721,9 @@ namespace FishNet.Component.Transforming
             PooledWriter writer = WriterPool.Retrieve();
             SerializeChanged(changed, writer);
             ServerUpdateTransform(writer.GetArraySegment(), channel);
+
             writer.Store();
         }
-
 
         #region GetChanged.
         /// <summary>
@@ -1819,6 +1849,7 @@ namespace FishNet.Component.Transforming
             //Position.
             if (_synchronizePosition)
             {
+                Vector3 startPosition = t.localPosition;
                 Vector3 position;
                 position.x = (force || _positionSnapping.X) ? transformData.Position.x : t.localPosition.x;
                 position.y = (force || _positionSnapping.Y) ? transformData.Position.y : t.localPosition.y;
@@ -2073,9 +2104,16 @@ namespace FishNet.Component.Transforming
             //Default value.
             next.ExtrapolationState = TransformData.ExtrapolateState.Disabled;
 
-            
-        }
+            //PROSTART
+            //Teleports cannot extrapolate.
+            if (_extrapolation == 0 || !_synchronizePosition || channel == Channel.Reliable || next.Position == prev.Position)
+                return;
 
+            Vector3 offet = (next.Position - prev.Position) * _extrapolation;
+            next.ExtrapolatedPosition = (next.Position + offet);
+            next.ExtrapolationState = TransformData.ExtrapolateState.Available;
+            //PROEND
+        }
 
         /// <summary>
         /// Updates a client with transform data.
@@ -2155,6 +2193,7 @@ namespace FishNet.Component.Transforming
             GoalData nextGd = ResettableObjectCaches<GoalData>.Retrieve();
             TransformData nextTd = nextGd.Transforms;
             UpdateTransformData(data, prevTd, nextTd, ref changedFull);
+
             OnDataReceived?.Invoke(prevTd, nextTd);
             SetExtrapolation(prevTd, nextTd, channel);
 
@@ -2297,23 +2336,28 @@ namespace FishNet.Component.Transforming
         /// <param name="value">Properties to synchronize.</param>
         public void SetSynchronizedProperties(SynchronizedProperty value)
         {
-            /* Make sure permissions are proper to change values.
-             * Let the server override client auth.
-             *
-             * Can send if server.
-             * Or owner + client auth.
-             */
-            bool canSend = (base.IsServerInitialized || (_clientAuthoritative && base.IsOwner));
-
-            if (!canSend)
-                return;
-
-            //If server send out observerRpc.
+            //If sending from the server.
             if (base.IsServerInitialized)
-                ObserversSetSynchronizedProperties(value);
-            //Otherwise send to the server.
-            else
+            {
+                //If no owner, or not client auth.
+                if (base.HasAuthority || !_clientAuthoritative)
+                    ObserversSetSynchronizedProperties(value);
+                else
+                    return;
+            }
+            //Sending from client.
+            else if (_clientAuthoritative && base.IsOwner)
+            {
                 ServerSetSynchronizedProperties(value);
+            }
+            //Cannot change.
+            else
+            {
+                return;
+            }
+
+            //Update locally.
+            SetSynchronizedPropertiesInternal(value);
         }
 
         /// <summary>
@@ -2329,19 +2373,16 @@ namespace FishNet.Component.Transforming
             }
 
             SetSynchronizedPropertiesInternal(value);
+            //Send to observers.
             ObserversSetSynchronizedProperties(value);
         }
 
         /// <summary>
         /// Sets synchronized values based on value.
         /// </summary>
-        [ObserversRpc(BufferLast = true)]
+        [ObserversRpc(BufferLast = true, ExcludeServer = true)]
         private void ObserversSetSynchronizedProperties(SynchronizedProperty value)
         {
-            //Would have already run on server if host.
-            if (base.IsServerInitialized)
-                return;
-
             SetSynchronizedPropertiesInternal(value);
         }
 
@@ -2360,7 +2401,6 @@ namespace FishNet.Component.Transforming
                 return (whole & part) == part;
             }
         }
-
 
         /// <summary>
         /// Deinitializes this component.
@@ -2391,6 +2431,16 @@ namespace FishNet.Component.Transforming
 
             ResettableObjectCaches<TransformData>.StoreAndDefault(ref _lastSentTransformData);
             ResettableObjectCaches<GoalData>.StoreAndDefault(ref _currentGoalData);
+        }
+
+        /// <summary>
+        /// Deinitializes this component for OnDestroy.
+        /// </summary>
+        private void ResetState_OnDestroy()
+        {
+            ResettableObjectCaches<TransformData>.StoreAndDefault(ref _lastSentTransformData);
+            if (_toClientChangedWriter != null)
+                WriterPool.Store(_toClientChangedWriter);
         }
     }
 }

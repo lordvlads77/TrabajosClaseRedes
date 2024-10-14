@@ -1,4 +1,5 @@
-﻿using FishNet.CodeGenerating;
+﻿#if FISHNET_STABLE_MODE
+using FishNet.CodeGenerating;
 using FishNet.Documenting;
 using FishNet.Managing;
 using FishNet.Object.Helping;
@@ -154,8 +155,8 @@ namespace FishNet.Object.Synchronizing
         #endregion
 
         #region Constructors.
-        public SyncVar(SyncTypeSettings settings = new SyncTypeSettings()) : this(default(T), settings) { }
-        public SyncVar(T initialValue, SyncTypeSettings settings = new SyncTypeSettings()) : base(settings) => SetInitialValues(initialValue);
+        public SyncVar(SyncTypeSettings settings = new()) : this(default(T), settings) { }
+        public SyncVar(T initialValue, SyncTypeSettings settings = new()) : base(settings) => SetInitialValues(initialValue);
         #endregion
 
         /// <summary>
@@ -422,8 +423,21 @@ namespace FishNet.Object.Synchronizing
         protected internal override void Read(PooledReader reader, bool asServer)
         {
             T value = reader.Read<T>();
+            
+            if (!ReadChangeId(reader))
+                return;
+            
             SetValue(value, false);
+            //TODO this needs to separate invokes from setting values so that syncvar can be written like remainder of synctypes.
         }
+        
+        //SyncVars do not use changeId.
+        [APIExclude]
+        protected override bool ReadChangeId(Reader reader) => true;
+
+        //SyncVars do not use changeId.
+        [APIExclude]
+        protected override void WriteChangeId(PooledWriter writer) { }
 
         /// <summary>
         /// Resets to initialized values.
@@ -441,9 +455,9 @@ namespace FishNet.Object.Synchronizing
             {
                 _value = _initialValue;
                 _previousClientValue = _initialValue;
+                _valueSetAfterInitialized = false;
             }
         }
     }
 }
-
-
+#endif

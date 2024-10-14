@@ -17,6 +17,24 @@ public class PersonajeNetwork : NetworkBehaviour
     
     // Se puede sincronizar GameObject solo SI tiene el NetworkObject
     
+    public override void OnStartServer() { } // Start del lado del Server, podemos modificar syncvars para que al
+                                             // enviarse al jugador llegue con esos datos
+    public override void OnStartClient() { } // Start con syncvars sincronizados pero solo se llama del lado del cliente
+    //public override void OnStartNetwork() { } // se llama en server y en el cliente
+    
+    //Se llaman cuando un GameObject cambia de dueño.
+    public override void OnOwnershipServer(NetworkConnection preOwner) { }
+    public override void OnOwnershipClient(NetworkConnection preOwner) { }
+    
+    // Se llama cuando un objeto es destruido en red, y aun no se envia el mensaje
+    public override void OnDespawnServer(NetworkConnection connection) { }
+    
+    // El 'Destroy' de multiplayer, aqui ya fue mandado que se destruyo el objeto.
+    public override void OnStopServer() { }
+    public override void OnStopClient() { }
+    public override void OnStopNetwork() { }
+    
+    //con Virtual la funcion puede cambiar que hace. 
     private void Awake()
     {
         // La funcion OnChange requiere (T valorAnterior, T valorNuevo, bool asServer)

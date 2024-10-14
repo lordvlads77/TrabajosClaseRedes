@@ -42,7 +42,11 @@ namespace FishNet.Component.Animating.Editing
             EditorGUILayout.ObjectField("Script:", MonoScript.FromMonoBehaviour(na), typeof(NetworkAnimator), false);
             GUI.enabled = true;
 
-            
+            //PROSTART
+            if (1 == 1)
+                EditorGUILayout.HelpBox(EditingConstants.PRO_ASSETS_UNLOCKED_TEXT, MessageType.None);
+            else
+                //PROEND
 #pragma warning disable CS0162 // Unreachable code detected
                 EditorGUILayout.HelpBox(EditingConstants.PRO_ASSETS_LOCKED_TEXT, MessageType.Warning);
 #pragma warning restore CS0162 // Unreachable code detected
@@ -121,7 +125,7 @@ namespace FishNet.Component.Animating.Editing
             width -= spacer;
             int entriesPerWidth = Mathf.Max(1, Mathf.FloorToInt(width / (spacePerEntry + extraSpaceJustBecause)));
 
-            List<AnimatorControllerParameter> aps = new List<AnimatorControllerParameter>();
+            List<AnimatorControllerParameter> aps = new();
             //Create a parameter detail for each parameter that can be synchronized.
             int count = 0;
             foreach (AnimatorControllerParameter item in _lastAnimatorController.parameters)
@@ -137,7 +141,7 @@ namespace FishNet.Component.Animating.Editing
             int apsCount = aps.Count;
             for (int i = 0; i < apsCount; i++)
             {
-                using (GUILayout.HorizontalScope hs = new GUILayout.HorizontalScope())
+                using (GUILayout.HorizontalScope hs = new())
                 {
                     GUILayout.Space(spacer);
                     int z = 0;
