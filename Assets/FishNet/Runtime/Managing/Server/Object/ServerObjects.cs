@@ -42,14 +42,14 @@ namespace FishNet.Managing.Server
         /// This is used primarily to track if client is sending messages for recently despawned objects.
         /// Objects are automatically removed after RECENTLY_DESPAWNED_DURATION seconds.
         /// </summary>
-        internal Dictionary<int, uint> RecentlyDespawnedIds = new Dictionary<int, uint>();
+        internal Dictionary<int, uint> RecentlyDespawnedIds = new();
         #endregion
 
         #region Private.
         /// <summary>
         /// Cached ObjectIds which may be used when exceeding available ObjectIds.
         /// </summary>
-        private Queue<int> _objectIdCache = new Queue<int>();
+        private Queue<int> _objectIdCache = new();
 
         /// <summary>
         /// Returns the ObjectId cache.
@@ -60,12 +60,12 @@ namespace FishNet.Managing.Server
         /// <summary>
         /// NetworkBehaviours which have dirty SyncObjects.
         /// </summary>
-        private List<NetworkBehaviour> _dirtySyncTypeBehaviours = new List<NetworkBehaviour>(20);
+        private List<NetworkBehaviour> _dirtySyncTypeBehaviours = new(20);
         /// <summary>
         /// Objects which need to be destroyed next tick.
         /// This is needed when running as host so host client will get any final messages for the object before they're destroyed.
         /// </summary>
-        private Dictionary<int, NetworkObject> _pendingDestroy = new Dictionary<int, NetworkObject>();
+        private Dictionary<int, NetworkObject> _pendingDestroy = new();
         /// <summary>
         /// NetworkObjects in a recently loaded scene.
         /// </summary>
@@ -73,7 +73,7 @@ namespace FishNet.Managing.Server
         /// <summary>
         /// Cache of spawning objects, used for recursively spawning nested NetworkObjects.
         /// </summary>
-        private List<NetworkObject> _spawnCache = new List<NetworkObject>();
+        private List<NetworkObject> _spawnCache = new();
         /// <summary>
         /// True if one or more scenes are currently loading through the SceneManager.
         /// </summary>
@@ -249,7 +249,7 @@ namespace FishNet.Managing.Server
             /* Shuffle Ids to make it more difficult
              * for clients to track spawned object
              * count. */
-            List<int> shuffledCache = new List<int>();
+            List<int> shuffledCache = new();
             //Ignore ushort.maxvalue as that indicates null.
             for (int i = 0; i < (ushort.MaxValue - 1); i++)
                 shuffledCache.Add(i);
@@ -393,13 +393,17 @@ namespace FishNet.Managing.Server
             CollectionCaches<NetworkObject>.Store(sceneNobs);
         }
 
-
         /// <summary>
         /// Setup NetworkObjects in a scene. Should only be called when server is active.
         /// </summary>
         /// <param name="s"></param>
         private void SetupSceneObjects(List<NetworkObject> sceneNobs)
         {
+            //Initialize the objects if not yet done.
+            foreach (NetworkObject obj in sceneNobs)
+                obj.SetInitializedValues(null);
+
+            int startCount = sceneNobs.Count;
             //Sort the nobs based on initialization order.
             bool initializationOrderChanged = false;
             List<NetworkObject> cache = CollectionCaches<NetworkObject>.RetrieveList();
@@ -417,7 +421,6 @@ namespace FishNet.Managing.Server
                 //Only setup if a scene object and not initialzied.
                 if (nob.IsNetworked && nob.IsSceneObject && nob.IsDeinitializing)
                 {
-                    base.UpdateNetworkBehavioursForSceneObject(nob, true);
                     base.AddToSceneObjects(nob);
                     /* If was active in the editor (before hitting play), or currently active
                      * then PreInitialize without synchronizing to clients. There is no reason
@@ -557,7 +560,7 @@ namespace FishNet.Managing.Server
             _spawnCache.Add(networkObject);
             SetupWithoutSynchronization(networkObject, ownerConnection, objectId);
 
-            foreach (NetworkObject item in networkObject.SerializedNestedNetworkObjects)
+            foreach (NetworkObject item in networkObject.InitializedNestedNetworkObjects)
             {
                 /* Only spawn recursively if the nob state is unset.
                  * Unset indicates that the nob has not been */
@@ -587,8 +590,12 @@ namespace FishNet.Managing.Server
             if (NetworkManager.IsClientStarted)
             {
                 int count = spawnCacheCopyCount;
+                NetworkConnection localConnection = NetworkManager.ClientManager.Connection;
                 for (int i = 0; i < count; i++)
-                    spawnCacheCopy[i].SetRenderersVisible(networkObject.Observers.Contains(NetworkManager.ClientManager.Connection));
+                {
+                    NetworkObject nob = spawnCacheCopy[i];
+                    nob.SetRenderersVisible(nob.Observers.Contains(localConnection));
+                }
             }
 
             CollectionCaches<NetworkObject>.Store(spawnCacheCopy);
@@ -681,7 +688,7 @@ namespace FishNet.Managing.Server
             nob.Preinitialize_Internal(NetworkManager, objectId, owner, true);
             //Initialize for prediction.
             nob.InitializePredictedObject_Server(base.NetworkManager, conn);
-            
+
             base.ReadPayload(conn, nob, reader);
 
             //Check user implementation of trySpawn.
@@ -696,7 +703,7 @@ namespace FishNet.Managing.Server
             /* This initializes the object again which cost only a small
              * amount of perf. Once the refactor is complete this will be changed. */
             SpawnWithoutChecks(nob, owner, objectId);
-            
+
             void SendFailedResponse(int objectId)
             {
                 SkipRemainingSpawnLength();
@@ -736,7 +743,7 @@ namespace FishNet.Managing.Server
                     rw.Initialize(writer, NetworkBehaviour.RPCLINK_RESERVED_BYTES);
                     foreach (NetworkBehaviour nb in nob.NetworkBehaviours)
                         nb.WriteRpcLinks(writer);
-                    
+
                     rw.WriteLength();
                 }
 
@@ -933,7 +940,7 @@ namespace FishNet.Managing.Server
             {
                 // Write out any pending sync types and be sure to clear from the dirty list
                 // to avoid trying to write out a despawned object later on.
-                for (int i = 0, count = nob.NetworkBehaviours.Length; i < count; ++i)
+                for (int i = 0, count = nob.NetworkBehaviours.Count; i < count; ++i)
                 {
                     NetworkBehaviour nb = nob.NetworkBehaviours[i];
                     if (nb.SyncTypeDirty && nb.WriteDirtySyncTypes((SyncTypeWriteFlag.ForceReliable | SyncTypeWriteFlag.IgnoreInterval)))

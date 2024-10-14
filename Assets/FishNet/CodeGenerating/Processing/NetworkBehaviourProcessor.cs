@@ -18,7 +18,7 @@ namespace FishNet.CodeGenerating.Processing
         /// <summary>
         /// Classes which have been processed for all NetworkBehaviour features.
         /// </summary>
-        private HashSet<TypeDefinition> _processedClasses = new HashSet<TypeDefinition>();
+        private HashSet<TypeDefinition> _processedClasses = new();
         #endregion
 
         #region Const.
@@ -34,10 +34,10 @@ namespace FishNet.CodeGenerating.Processing
             TypeDefinition copyTypeDef = typeDef;
 
             //TypeDefs which are using prediction.
-            List<TypeDefinition> _usesPredictionTypeDefs = new List<TypeDefinition>();
+            List<TypeDefinition> _usesPredictionTypeDefs = new();
 
             //Make collection of NBs to processor.
-            List<TypeDefinition> typeDefs = new List<TypeDefinition>();
+            List<TypeDefinition> typeDefs = new();
             do
             {
                 if (!HasClassBeenProcessed(copyTypeDef))
@@ -79,7 +79,10 @@ namespace FishNet.CodeGenerating.Processing
                 CreateNetworkInitializeMethods(td, out networkInitializeIfDisabledMd);
                 CallNetworkInitializesFromNetworkInitializeIfDisabled(networkInitializeIfDisabledMd);
 
-                
+                //PROSTART
+                /* Code stripping. */
+                modified |= StripNetworkBehaviourCallbacks(td);
+                //PROEND
 
                 /* Prediction. */
                 /* Run prediction first since prediction will modify
@@ -198,7 +201,50 @@ namespace FishNet.CodeGenerating.Processing
             return false;
         }
 
-        
+        //PROSTART
+        /// <summary>
+        /// Removes NetworkBehaviour callbacks which don't need to be known to client or server.
+        /// </summary>
+        /// <param name="typeDef"></param>
+        /// <returns></returns>
+        private bool StripNetworkBehaviourCallbacks(TypeDefinition typeDef)
+        {
+            bool removeClient = CodeStripping.RemoveClientLogic;
+            bool removeServer = CodeStripping.RemoveServerLogic;
+
+            List<MethodDefinition> methods = typeDef.Methods.ToList();
+            int startCount = methods.Count;
+            foreach (MethodDefinition md in methods)
+            {
+                if (!md.IsVirtual)
+                    continue;
+
+                if (removeClient)
+                {
+                    if (
+                        (md.Name == nameof(NetworkBehaviour.OnStartClient)) ||
+                        (md.Name == nameof(NetworkBehaviour.OnStopClient)) ||
+                        (md.Name == nameof(NetworkBehaviour.OnOwnershipClient))
+                        )
+                        typeDef.Methods.Remove(md);
+                }
+                else if (removeServer)
+                {
+                    if (
+                        (md.Name == nameof(NetworkBehaviour.OnStartServer)) ||
+                        (md.Name == nameof(NetworkBehaviour.OnStopServer)) ||
+                        (md.Name == nameof(NetworkBehaviour.OnOwnershipServer)) ||
+                        (md.Name == nameof(NetworkBehaviour.OnSpawnServer)) ||
+                        (md.Name == nameof(NetworkBehaviour.OnDespawnServer))
+                        )
+                        typeDef.Methods.Remove(md);
+                }
+
+            }
+
+            return (typeDef.Methods.Count != startCount);
+        }
+        //PROEND
 
         /// <summary>
         /// Calls the next awake method if the nested awake was created by codegen.
@@ -263,7 +309,7 @@ namespace FishNet.CodeGenerating.Processing
 
                 if (created)
                 {
-                    List<Instruction> insts = new List<Instruction>();
+                    List<Instruction> insts = new();
                     ILProcessor processor = md.Body.GetILProcessor();
                     //Add check if already called.
                     //if (alreadyInitialized) return;
@@ -326,8 +372,8 @@ namespace FishNet.CodeGenerating.Processing
                 if (!alreadyHasBaseCall)
                 {
                     //Create instructions for base call.
-                    List<Instruction> instructions = new List<Instruction>
-                            {
+                    List<Instruction> instructions = new()
+                    {
                                 processor.Create(OpCodes.Ldarg_0), //this.
                                 processor.Create(OpCodes.Call, baseMr)
                             };
@@ -473,7 +519,7 @@ namespace FishNet.CodeGenerating.Processing
             {
                 created = true;
 
-                thisAwakeMethodDef = new MethodDefinition(NetworkBehaviourHelper.AWAKE_METHOD_NAME, MethodDefinitionExtensions.PUBLIC_VIRTUAL_ATTRIBUTES,
+                thisAwakeMethodDef = new(NetworkBehaviourHelper.AWAKE_METHOD_NAME, MethodDefinitionExtensions.PUBLIC_VIRTUAL_ATTRIBUTES,
                     typeDef.Module.TypeSystem.Void);
                 thisAwakeMethodDef.Body.InitLocals = true;
                 typeDef.Methods.Add(thisAwakeMethodDef);
@@ -487,7 +533,7 @@ namespace FishNet.CodeGenerating.Processing
 
             processor = thisAwakeMethodDef.Body.GetILProcessor();
             //Create instructions for base call.
-            List<Instruction> instructions = new List<Instruction>
+            List<Instruction> instructions = new()
             {
                 processor.Create(OpCodes.Ldarg_0), //this.
                 processor.Create(OpCodes.Call, networkInitializeMethodRef)

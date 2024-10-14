@@ -6,7 +6,6 @@ using FishNet.Managing;
 using GameKit.Dependencies.Utilities;
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace FishNet.Transporting.Multipass
@@ -98,30 +97,30 @@ namespace FishNet.Transporting.Multipass
         /// </summary>
         [Tooltip("Transports to use.")]
         [SerializeField]
-        private List<Transport> _transports = new List<Transport>();
+        private List<Transport> _transports = new();
         /// <summary>
         /// Transports to use.
         /// </summary>
-        public IList<Transport> Transports => _transports;
+        public IReadOnlyList<Transport> Transports => _transports;
         #endregion
 
         #region Private. 
         /// <summary>
         /// An unset/invalid ClientTransportData.
         /// </summary>
-        private readonly ClientTransportData INVALID_CLIENTTRANSPORTDATA = new ClientTransportData(int.MinValue, int.MinValue, int.MinValue);
+        private readonly ClientTransportData INVALID_CLIENTTRANSPORTDATA = new(int.MinValue, int.MinValue, int.MinValue);
         /// <summary>
         /// MultipassId lookup.
         /// </summary>
-        private Dictionary<int, ClientTransportData> _multpassIdLookup = new Dictionary<int, ClientTransportData>();
+        private Dictionary<int, ClientTransportData> _multpassIdLookup = new();
         /// <summary>
         /// TransportId lookup. Each index within the list is the same as the transport index.
         /// </summary>
-        private List<Dictionary<int, ClientTransportData>> _transportIdLookup = new List<Dictionary<int, ClientTransportData>>();
+        private List<Dictionary<int, ClientTransportData>> _transportIdLookup = new();
         /// <summary>
         /// Ids available to new connections.
         /// </summary>
-        private Queue<int> _availableMultipassIds = new Queue<int>();
+        private Queue<int> _availableMultipassIds = new();
         /// <summary>
         /// Last Id added to availableMultipassIds.
         /// </summary>
@@ -153,7 +152,7 @@ namespace FishNet.Transporting.Multipass
             //Create transportsToMultipass.
             for (int i = 0; i < _transports.Count; i++)
             {
-                Dictionary<int, ClientTransportData> dict = new Dictionary<int, ClientTransportData>();
+                Dictionary<int, ClientTransportData> dict = new();
                 _transportIdLookup.Add(dict);
                 //Initialize transports and callbacks.
                 _transports[i].Initialize(networkManager, i);
@@ -379,7 +378,7 @@ namespace FishNet.Transporting.Multipass
                 //Get a multipassId for new connections.
                 multipassId = _availableMultipassIds.Dequeue();
                 //Get and update a clienttransportdata.
-                ClientTransportData ctd = new ClientTransportData(transportIndex, transportConnectionId, multipassId);
+                ClientTransportData ctd = new(transportIndex, transportConnectionId, multipassId);
                 //Assign the lookup for transportId/index.
                 transportToMultipass[transportConnectionId] = ctd;
                 //Assign the lookup for multipassId.

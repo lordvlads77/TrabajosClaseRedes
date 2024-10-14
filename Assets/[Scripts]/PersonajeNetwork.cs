@@ -1,4 +1,5 @@
 using System;
+using FishNet.Connection;
 using FishNet.Example.ColliderRollbacks;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
@@ -16,6 +17,24 @@ public class PersonajeNetwork : NetworkBehaviour
     
     // Se puede sincronizar GameObject solo SI tiene el NetworkObject
     
+    public override void OnStartServer() { } // Start del lado del Server, podemos modificar syncvars para que al
+                                             // enviarse al jugador llegue con esos datos
+    public override void OnStartClient() { } // Start con syncvars sincronizados pero solo se llama del lado del cliente
+    //public override void OnStartNetwork() { } // se llama en server y en el cliente
+    
+    //Se llaman cuando un GameObject cambia de dueño.
+    public override void OnOwnershipServer(NetworkConnection preOwner) { }
+    public override void OnOwnershipClient(NetworkConnection preOwner) { }
+    
+    // Se llama cuando un objeto es destruido en red, y aun no se envia el mensaje
+    public override void OnDespawnServer(NetworkConnection connection) { }
+    
+    // El 'Destroy' de multiplayer, aqui ya fue mandado que se destruyo el objeto.
+    public override void OnStopServer() { }
+    public override void OnStopClient() { }
+    public override void OnStopNetwork() { }
+    
+    //con Virtual la funcion puede cambiar que hace. 
     private void Awake()
     {
         // La funcion OnChange requiere (T valorAnterior, T valorNuevo, bool asServer)
@@ -60,10 +79,28 @@ public class PersonajeNetwork : NetworkBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Capsula"))
+        if (IsServerStarted == false) // No soy el servidor, me salgo y no hago nada.
         {
-            
+            //Reproducir Sonido
+            //Dar feedback al usuario directamente
+            return;
         }
+        /*if(IsClientStarted) // Hay que tener cuidado con este si estamos usando un HOST.
+        Servidor y cliente al mismo tiempo.*/
+        if (other.CompareTag("Cube"))
+        {
+            Despawn(other.gameObject); // Destroy (aunque seria mas bien un SetActive = false) porque lo esconde,
+            // pero se sincroniza en red.
+            //Owner // <--- owner es un NetworkConnection
+            EquiparArmaRPC(connection:Owner); // Le mando mensaje solo al jugador que controla este gameObject
+            // Si Owner es == null, // Lo controla el servidor
+        }
+    }
+    
+    [TargetRpc]
+    void EquiparArmaRPC(NetworkConnection connection)
+    {
+        print("Si tome el arma");
     }
 
     // Puedo llamar esta funcion en gameObjects que no me pertenecen

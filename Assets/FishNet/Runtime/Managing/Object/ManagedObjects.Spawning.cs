@@ -254,15 +254,25 @@ namespace FishNet.Managing.Object
         {
             /* Write changed transform properties. */
             TransformPropertiesFlag tpf;
-            //If a scene object then get it from scene properties.
-            if (sceneObject)
+            /* If a scene object or nested during initialization then
+             * write changes compared to initialized values. */
+            if (sceneObject || nob.InitializedParentNetworkBehaviour != null)
             {
                 tpf = nob.GetTransformChanges(nob.SerializedTransformProperties);
             }
             else
             {
-                PrefabObjects po = NetworkManager.GetPrefabObjects<PrefabObjects>(nob.SpawnableCollectionId, false);
-                tpf = nob.GetTransformChanges(po.GetObject(asServer: true, nob.PrefabId).gameObject);
+                //This should not be possible when spawning non-nested.
+                if (nob.PrefabId == NetworkObject.UNSET_PREFABID_VALUE)
+                {
+                    NetworkManager.LogWarning($"NetworkObject {nob.ToString()} unexpectedly has an unset PrefabId while it's not nested. Please report this warning.");
+                    tpf = TransformPropertiesFlag.Everything;
+                }
+                else
+                {
+                    PrefabObjects po = NetworkManager.GetPrefabObjects<PrefabObjects>(nob.SpawnableCollectionId, false);
+                    tpf = nob.GetTransformChanges(po.GetObject(asServer: true, nob.PrefabId).gameObject);
+                }
             }
 
             headerWriter.WriteUInt8Unpacked((byte)tpf);
@@ -343,7 +353,7 @@ namespace FishNet.Managing.Object
             // }
 
             //Nested nobs not yet supported.
-            if (nob.SerializedNestedNetworkObjects.Count > 0)
+            if (nob.InitializedNestedNetworkObjects.Count > 0)
             {
                 if (asServer)
                     spawner.Kick(KickReason.ExploitAttempt, LoggingType.Common, $"Connection {spawner.ClientId} tried to spawn an object {nob.name} which has nested NetworkObjects.");
@@ -389,7 +399,7 @@ namespace FishNet.Managing.Object
             //    return false;
             //}
             //Nested nobs not yet supported.
-            if (nob.SerializedNestedNetworkObjects.Count > 0)
+            if (nob.InitializedNestedNetworkObjects.Count > 0)
             {
                 if (asServer)
                     despawner.Kick(KickReason.ExploitAttempt, LoggingType.Common, $"Connection {despawner.ClientId} tried to despawn an object {nob.name} which has nested NetworkObjects.");
