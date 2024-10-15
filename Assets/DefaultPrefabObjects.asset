@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: DefaultPrefabObjects
   m_EditorClassIdentifier: 
   _prefabs:
+  - {fileID: 4583115168029881259, guid: 82509a306fae4a3439d593f0e81ece84, type: 3}
   - {fileID: -1124273537691470351, guid: 02e51516dd64f50479d53f1ba7ddefe1, type: 3}
   - {fileID: 6130708859354772433, guid: f670f086a8736ab429a93d147dc7852c, type: 3}
   - {fileID: 8475222101369129519, guid: 8cf33e8e99a9b0c4c8f29ff725650de6, type: 3}

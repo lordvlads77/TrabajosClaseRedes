@@ -703,7 +703,7 @@ PlayerSettings:
   webGLThreadsSupport: 0
   webGLDecompressionFallback: 0
   scriptingDefineSymbols:
-    Standalone: EDGEGAP_PLUGIN_SERVERS;FISHNET;FISHNET_V4;FISHNET_PRO
+    Standalone: EDGEGAP_PLUGIN_SERVERS;FISHNET;FISHNET_V4;FISHNET_PRO;FISHNET_DISABLE_V3TOV4_HELPERS
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend: {}
