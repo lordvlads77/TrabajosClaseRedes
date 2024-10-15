@@ -50,14 +50,9 @@ public class PersonajeNetwork : NetworkBehaviour
         }
     }
 
-    [Server]
+    [Server] // Solo ejecuta el codigo si es servidor nos ahorra el 'if (IsServerStarted) return'
     private void LateUpdate()
     {
-        /*if (!IsServerStarted)
-        {
-            return;
-        }*/
-
         if (Input.GetKeyDown(KeyCode.Alpha1))
         {
             milista.Add(Random.Range(1, 100));
