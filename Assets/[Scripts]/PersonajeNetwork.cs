@@ -15,6 +15,76 @@ public class PersonajeNetwork : NetworkBehaviour
     readonly SyncVar<Color> _myColor = new SyncVar<Color>();
     private readonly SyncVar<GameObject> target = new SyncVar<GameObject>();
     
+    // List, Hashet, Dictionary
+    readonly SyncList<int> milista = new SyncList<int>(); // List<int>
+    
+    private void Awake()
+    {
+        // La funcion OnChange requiere (T valorAnterior, T valorNuevo, bool asServer)
+        _myColor.OnChange += myColorChange;
+        milista.OnChange += MiListaChange;
+    }
+
+    // 1, 10, 5, 3, 5, 8, 9, 2, 4, 6 // [2] = 13
+    void MiListaChange(SyncListOperation operation, int index, int OldValue, int NewValue, bool asServer)
+    {
+        print($"{operation} - index: {index} - OldValue: {OldValue} - NewValue: {NewValue}");
+        switch (operation)
+        {
+            case SyncListOperation.Add: // miLista.Add(20);
+                // index, en que posicion se inserto, newValue que valor se agrego.
+                break;
+            case SyncListOperation.Insert: // miLista.Insert(20, 5); // Se agrego el numer0 20 en la posicion 5
+                break;
+            case SyncListOperation.Set: // Set seria cuando ponemos un valor en especifico // miLista[2] = 13;
+                // Se puede utilizar index, oldValue, newValue
+                break;
+            case SyncListOperation.RemoveAt: // Es por si quiero eliminar un elemento // miLista.RemoveAt(1); // Elimina el 10
+                // Se puede utilizar index, oldValue // oldValue tendria el valor de la variable que fue removida.
+                // en este caso seria 10
+                break;
+            case SyncListOperation.Clear: //miLista.Clear(); // Esto limpia everything, no hay ni indice, ni newValue, ni OldValue
+                break;
+            case SyncListOperation.Complete: // Cuando se llamaron todas las operaciones de este fishnet frame
+                break;
+        }
+    }
+
+    [Server]
+    private void LateUpdate()
+    {
+        /*if (!IsServerStarted)
+        {
+            return;
+        }*/
+
+        if (Input.GetKeyDown(KeyCode.Alpha1))
+        {
+            milista.Add(Random.Range(1, 100));
+        };
+        if (Input.GetKeyDown(KeyCode.Alpha2))
+        {
+            milista.RemoveAt(Random.Range(0, milista.Count));
+        }
+        if (Input.GetKeyDown(KeyCode.Alpha3))
+        {
+            milista.Clear();
+        }
+    }
+
+    // [SYNC] miLista.Add(10); miLista.Add(15); miLista.Remove(0); [SYNC] [SYNC] miLista.Clear(); miLista.Add(3) [SYNC] 
+    
+    //C#
+    // int[] array
+    //List<int> // areglo dinamico
+    // Lista // Contra: Si necesito verificar que sea unico, o si existe un elemento, es muy lento porque tiene que
+    // recorrer toda la lista de elemento en elemento para poder decirte despues.
+    // Hashet<int> // Lista pero con hash
+    //Dictionary<string, int> // Es como una agenda, tenemos una key vinculando a un valor.
+    //1,10, 5, 3, 7, 8, 9, 2, 4, 6
+    
+    //miLista.Contains(20);
+    
     // Se puede sincronizar GameObject solo SI tiene el NetworkObject
     
     public override void OnStartServer() { } // Start del lado del Server, podemos modificar syncvars para que al
@@ -34,12 +104,8 @@ public class PersonajeNetwork : NetworkBehaviour
     public override void OnStopClient() { }
     public override void OnStopNetwork() { }
     
-    //con Virtual la funcion puede cambiar que hace. 
-    private void Awake()
-    {
-        // La funcion OnChange requiere (T valorAnterior, T valorNuevo, bool asServer)
-        _myColor.OnChange += myColorChange;
-    }
+    //Con Virtual la funcion puede cambiar que hace. 
+    
 
     void EnviarTeletransporte()
     {
