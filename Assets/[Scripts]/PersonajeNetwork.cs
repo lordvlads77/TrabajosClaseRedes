@@ -1,6 +1,7 @@
 using System;
 using FishNet.Connection;
 using FishNet.Example.ColliderRollbacks;
+using FishNet.Managing.Logging;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
 using UnityEngine;
@@ -9,17 +10,39 @@ using Random = UnityEngine.Random;
 
 public class PersonajeNetwork : NetworkBehaviour
 {
+    public static PersonajeNetwork LocalPersonaje { get; private set; }
     [FormerlySerializedAs("_moveInput")] [SerializeField] Vector3 moveInput = default;
     [SerializeField]
     float _moveSpeed = 3f;
-    readonly SyncVar<Color> _myColor = new SyncVar<Color>();
+    public readonly SyncVar<Color> _myColor = new SyncVar<Color>();
     private readonly SyncVar<GameObject> target = new SyncVar<GameObject>();
     
     // List, Hashet, Dictionary
     readonly SyncList<int> milista = new SyncList<int>(); // List<int>
     
+    // Start pero las variables de networking ya estan sincronizadas
+    public override void OnStartNetwork()
+    {
+        if (Owner.IsLocalClient)
+        {
+            name += "(Local)";
+            LocalPersonaje = this;
+            GameEvents.instance.OnLocalPlayerSpawn.Invoke();// Llamar despues de asignar el singleton
+            GetComponent<MeshRenderer>().material.color = Color.green;
+        }
+    }
+
+    public override void OnStopNetwork()
+    {
+        if (GameEvents.instance)
+        {
+            GameEvents.instance.OnLocalPlayerDespawn.Invoke();
+        }
+    }
+    
     private void Awake()
     {
+        
         // La funcion OnChange requiere (T valorAnterior, T valorNuevo, bool asServer)
         _myColor.OnChange += myColorChange;
         milista.OnChange += MiListaChange;
@@ -50,7 +73,7 @@ public class PersonajeNetwork : NetworkBehaviour
         }
     }
 
-    [Server] // Solo ejecuta el codigo si es servidor nos ahorra el 'if (IsServerStarted) return'
+    [Server (Logging = LoggingType.Off)] // Solo ejecuta el codigo si es servidor nos ahorra el 'if (IsServerStarted) return'
     private void LateUpdate()
     {
         if (Input.GetKeyDown(KeyCode.Alpha1))
@@ -97,7 +120,7 @@ public class PersonajeNetwork : NetworkBehaviour
     // El 'Destroy' de multiplayer, aqui ya fue mandado que se destruyo el objeto.
     public override void OnStopServer() { }
     public override void OnStopClient() { }
-    public override void OnStopNetwork() { }
+    
     
     //Con Virtual la funcion puede cambiar que hace. 
     
@@ -128,15 +151,7 @@ public class PersonajeNetwork : NetworkBehaviour
         //Aquí no hay garantia de que las variables de networking esten sincronizadas
     }
 
-    // Start pero las variables de networking ya estan sincronizadas
-    public override void OnStartNetwork()
-    {
-        if (Owner.IsLocalClient)
-        {
-            name += "(Local)";
-            GetComponent<MeshRenderer>().material.color = Color.green;
-        }
-    }
+    
 
     private void OnTriggerEnter(Collider other)
     {
