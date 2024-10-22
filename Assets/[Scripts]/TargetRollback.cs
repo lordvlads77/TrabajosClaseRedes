@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using FishNet.Managing.Logging;
 using FishNet.Object;
 using UnityEngine;
 
@@ -14,7 +15,7 @@ public class TargetRollback : MonoBehaviour
         dir = Vector3.right;
     }
 
-    [Server]
+    [Server (Logging = LoggingType.Off)]
     void Update()
     {
         _rigidbody.MovePosition(Time.deltaTime * velocidad * dir +_rigidbody.position);
@@ -25,12 +26,12 @@ public class TargetRollback : MonoBehaviour
             {
                 dir.x = -1f;
             }
-            else //Vamos a la izquierda
+        }
+        else //Vamos a la izquierda
+        {
+            if (_rigidbody.position.x <= -6f)
             {
-                if (_rigidbody.position.x <= -6f)
-                {
-                    dir.x = 1f;
-                }
+                dir.x = 1f;
             }
         }
     }

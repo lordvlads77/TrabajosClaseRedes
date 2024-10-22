@@ -17,6 +17,7 @@ GameObject:
   - component: {fileID: 7713380884426274399}
   - component: {fileID: 4232307984914205839}
   - component: {fileID: 6943814004843981535}
+  - component: {fileID: 8820965088430814799}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -242,3 +243,18 @@ MonoBehaviour:
   _networkObjectCache: {fileID: 0}
   prefabBala: {fileID: 868808581175801180, guid: 82509a306fae4a3439d593f0e81ece84, type: 3}
   _velocidadBala: 10
+--- !u!114 &8820965088430814799
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8284523286945476493}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 073e588a7ebdff24eb44876c75892038, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 6130708859354772433}
+  _networkObjectCache: {fileID: 0}

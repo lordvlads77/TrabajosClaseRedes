@@ -27,7 +27,7 @@ public class PersonajeNetwork : NetworkBehaviour
         {
             name += "(Local)";
             LocalPersonaje = this;
-            GameEvents.instance.OnLocalPlayerSpawn.Invoke();// Llamar despues de asignar el singleton
+            //GameEvents.instance.OnLocalPlayerSpawn.Invoke();// Llamar despues de asignar el singleton
             GetComponent<MeshRenderer>().material.color = Color.green;
         }
     }

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using FishNet.Managing.Logging;
 using FishNet.Object;
 using Unity.VisualScripting;
 using UnityEngine;
@@ -10,7 +11,7 @@ public class Canion : NetworkBehaviour
     [FormerlySerializedAs("bala")] public GameObject balaPrefab;
     public float velocidadBala = default;
 
-    [Server]
+    [Server (Logging = LoggingType.Off)]
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.Space))
