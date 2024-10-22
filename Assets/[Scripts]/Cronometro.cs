@@ -10,6 +10,7 @@ using UnityEngine;
 public class Cronometro : NetworkBehaviour
 {
     public TextMeshProUGUI tiempoTxt;
+    public TextMeshProUGUI tiempoTranscurridoTxt;
     
     // Option 1: SyncVar: Contras: Requiere siempre de banda ancha.
     // readonly SyncVar<float> tiempoRestante = new SyncVar<float>();
@@ -18,11 +19,31 @@ public class Cronometro : NetworkBehaviour
     
     // Option 3: RPC y enviamos tiempo: Funciona pero implica algo de calculos.
     
-    readonly SyncTimer timepoRestante = new SyncTimer();
+    readonly SyncTimer timepoRestante = new SyncTimer(); // Photon lo llama NetworkTimer
+    readonly SyncStopwatch _tiempoTranscurrido = new SyncStopwatch();
 
     private void Awake()
     {
         timepoRestante.OnChange += OnTiempoRestanteChange;
+        _tiempoTranscurrido.OnChange += OnTiempoTranscurridoChange;
+    }
+
+    void OnTiempoTranscurridoChange(SyncStopwatchOperation operation, float prev, bool asServer)
+    {
+        print($"Tiempo transcurrido evento:{operation} - prev: {prev}");
+        switch (operation)
+        {
+            case SyncStopwatchOperation.Start: //Los más practicos Start y 
+                break;
+            case SyncStopwatchOperation.Pause:
+            case SyncStopwatchOperation.PauseUpdated:
+                break;
+            case SyncStopwatchOperation.Unpause:
+                break;
+            case SyncStopwatchOperation.Stop: //Stop
+            case SyncStopwatchOperation.StopUpdated:
+                break;
+        }
     }
     
     void OnTiempoRestanteChange(SyncTimerOperation operation, float prev, float next, bool asServer)
@@ -54,8 +75,19 @@ public class Cronometro : NetworkBehaviour
     }
     private void Update()
     {
+        _tiempoTranscurrido.Update(Time.deltaTime);
+        tiempoTranscurridoTxt.text = $"{_tiempoTranscurrido.Elapsed:00:00}";
+
+        if (Input.GetKeyDown(KeyCode.Y) && IsServerStarted)
+        {
+            _tiempoTranscurrido.StartStopwatch();
+            //_tiempoTranscurrido.PauseStopwatch();
+            //_tiempoTranscurrido.UnpauseStopwatch();
+            //_tiempoTranscurrido.StopStopwatch();
+        }
+        
         timepoRestante.Update(Time.deltaTime); // Como cliente o server se necesita llamar
-        tiempoTxt.text = $"{timepoRestante.Remaining:.00}"; // :.00 = Solo 2 decimales
+        tiempoTxt.text = $"{timepoRestante.Remaining:00:00}"; // :.00 = Solo 2 decimales
         
         if (Input.GetKeyDown(KeyCode.T) && IsServerStarted)
         {
